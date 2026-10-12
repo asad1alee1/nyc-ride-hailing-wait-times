@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Who waits longest for a ride in New York? (independent project)</title>
+<style>
+:root{
+  --bg:#F1F4F6; --panel:#FFFFFF; --ink:#16212B; --muted:#586573; --line:#D4DBE2;
+  --cool:#E6EFF3; --mid:#F1C77F; --hot:#C4351C;
+  --wav:#2E3C9C; --std:#9AA7B4; --flag:#16212B;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Avenir Next","Segoe UI",system-ui,-apple-system,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10171D; --panel:#18222B; --ink:#E8EDF1; --muted:#9AA8B5; --line:#2B3844;
+    --cool:#1F3340; --mid:#C99A4B; --hot:#E5573D; --wav:#8E9BFF; --std:#6B7A88; --flag:#E8EDF1;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 20px 48px}
+header{margin-bottom:24px}
+h1{font-family:var(--serif);font-weight:600;font-size:clamp(26px,4vw,40px);line-height:1.15;margin:0 0 10px;letter-spacing:-.01em}
+.lede{font-family:var(--serif);font-size:clamp(17px,2vw,20px);max-width:62ch;margin:0 0 10px}
+.meta{color:var(--muted);font-size:13px;max-width:80ch;margin:0}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--muted);margin-bottom:12px;background:var(--panel)}
+.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px 18px 16px;min-width:0}
+.hero{grid-column:span 12}
+.zones{grid-column:span 7}
+.wavp{grid-column:span 5}
+.limits{grid-column:span 12}
+@media (max-width:900px){.zones,.wavp{grid-column:span 12}}
+h2{font-family:var(--serif);font-size:20px;font-weight:600;margin:0 0 4px;line-height:1.25}
+.sub{color:var(--muted);font-size:13px;margin:0 0 14px;max-width:70ch}
+.bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;border:0;background:transparent;color:var(--ink);padding:6px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--panel)}
+button:focus-visible{outline:2px solid var(--wav);outline-offset:2px}
+/* heatmap */
+.hm{overflow-x:auto;padding-bottom:4px}
+.hm-grid{display:grid;grid-template-columns:44px repeat(24,minmax(22px,1fr));gap:2px;min-width:640px}
+.hm-grid .lab{font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
+.hm-grid .hlab{font-size:11px;color:var(--muted);text-align:center}
+.cell{height:30px;border-radius:2px;position:relative}
+.cell:focus-visible{outline:2px solid var(--ink);outline-offset:1px;z-index:2}
+.legend{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-top:12px}
+.legend .ramp{height:10px;width:180px;border-radius:2px}
+.callouts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+@media (max-width:700px){.callouts{grid-template-columns:1fr}}
+.callout{border-left:3px solid var(--hot);padding:2px 0 2px 10px;font-size:13px}
+.callout b{font-family:var(--serif);font-size:17px;display:block;font-weight:600}
+/* zones */
+.zrow{display:grid;grid-template-columns:minmax(120px,210px) 1fr 64px;gap:10px;align-items:center;padding:4px 0;font-size:13px}
+.zname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.zname small{color:var(--muted)}
+@media (max-width:600px){.zrow{grid-template-columns:1fr 64px}.zname{grid-column:1/-1}}
+.track{background:var(--cool);height:16px;border-radius:2px;position:relative}
+.fill{height:100%;border-radius:2px;background:var(--hot)}
+.fill.flagged{background:repeating-linear-gradient(45deg,var(--hot) 0 5px,color-mix(in srgb,var(--hot) 55%,var(--panel)) 5px 9px)}
+.zval{text-align:right;font-variant-numeric:tabular-nums}
+.note{color:var(--muted);font-size:12px;margin:12px 0 0}
+.swatch{display:inline-block;width:14px;height:10px;vertical-align:middle;margin-right:4px;border-radius:2px}
+/* wav */
+.brow{margin:0 0 14px}
+.brow .bn{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
+.brow .bn small{color:var(--muted)}
+.pair{display:grid;grid-template-columns:1fr 46px;gap:8px;align-items:center;margin:2px 0}
+.pair .t{background:var(--cool);height:14px;border-radius:2px}
+.pair .f{height:100%;border-radius:2px}
+.pair .v{font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.key{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:0 0 12px}
+.big{display:flex;gap:20px;margin:0 0 16px;flex-wrap:wrap}
+.big div{font-size:12px;color:var(--muted)}
+.big b{display:block;font-family:var(--serif);font-size:26px;color:var(--ink);font-weight:600}
+/* limits */
+.limits ul{margin:8px 0 0;padding-left:18px;columns:2;column-gap:32px;font-size:13px}
+@media (max-width:800px){.limits ul{columns:1}}
+.limits li{margin-bottom:6px;break-inside:avoid}
+#tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--panel);font-size:12px;padding:6px 9px;border-radius:4px;max-width:260px;opacity:0;z-index:10;line-height:1.4}
+footer{margin-top:20px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <span class="badge">Independent project. Not work experience, not affiliated with any ride-hailing company.</span>
+  <h1>Who waits longest for a ride in New York?</h1>
+  <p class="lede">A typical rider waits about four minutes almost everywhere. The long waits are concentrated: at the airports, in outer Queens and Staten Island, on weekend nights, and for riders who request a wheelchair-accessible vehicle.</p>
+  <p class="meta">NYC Taxi &amp; Limousine Commission high-volume for-hire trips (Uber and Lyft), April 2026. 20.7 million trips with valid timestamps; 1.3% were excluded for impossible request times. Wait means the time from request to pickup.</p>
+</header>
+
+<div class="grid">
+  <section class="panel hero" aria-labelledby="h-hm">
+    <h2 id="h-hm">When riders wait longest</h2>
+    <p class="sub">Each cell is one hour of the week, citywide. Darker means a longer wait. Hover or focus a cell for the number of trips behind it.</p>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Wait measure">
+        <button type="button" id="m90" aria-pressed="true">Slowest 1 in 10 (90th percentile)</button>
+        <button type="button" id="m50" aria-pressed="false">Typical (median)</button>
+      </div>
+    </div>
+    <div class="hm"><div class="hm-grid" id="hm"></div></div>
+    <div class="legend"><span id="lmin"></span><div class="ramp" id="ramp"></div><span id="lmax"></span><span>minutes</span></div>
+    <div class="callouts" id="callouts"></div>
+    <p class="note">Overnight waits are probably understated: the impossible-timestamp rows that were dropped peak between 3am and 5am.</p>
+  </section>
+
+  <section class="panel zones" aria-labelledby="h-z">
+    <h2 id="h-z">Where riders wait longest</h2>
+    <p class="sub" id="zsub"></p>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Zone ranking">
+        <button type="button" id="zp90" aria-pressed="true">Longest 90th-percentile wait</button>
+        <button type="button" id="zlong" aria-pressed="false">Most waits over 10 minutes</button>
+      </div>
+    </div>
+    <div id="zlist"></div>
+    <p class="note"><span class="swatch" style="background:repeating-linear-gradient(45deg,var(--hot) 0 4px,color-mix(in srgb,var(--hot) 55%,var(--panel)) 4px 7px)"></span>Hatched bars: more than 3% of this zone's trips were excluded for impossible timestamps, so the wait may be understated.</p>
+  </section>
+
+  <section class="panel wavp" aria-labelledby="h-w">
+    <h2 id="h-w">Who is served least well</h2>
+    <p class="sub">Uber riders who asked for a wheelchair-accessible vehicle versus everyone else: share of trips with a wait over 10 minutes.</p>
+    <div class="big" id="wavbig"></div>
+    <div class="key"><span><span class="swatch" style="background:var(--wav)"></span>Requested accessible vehicle</span><span><span class="swatch" style="background:var(--std)"></span>No accessible request</span></div>
+    <div id="wavlist"></div>
+    <p class="note">Staten Island has only 476 accessible requests, so read it as indicative. Lyft is left out: 59% of its accessible requests had unusable timestamps.</p>
+  </section>
+
+  <section class="panel limits" aria-labelledby="h-l">
+    <h2 id="h-l">What this data cannot tell us</h2>
+    <ul>
+      <li>There are no cancellations, no unmatched requests and no driver supply. Every accessible request here was matched, so the real accessible gap may be larger than what is visible.</li>
+      <li>Uber's longer waits may partly reflect when each company records the request, not only how long riders actually waited. Causes are hypotheses until tested with internal data.</li>
+      <li>Percentiles cannot be averaged, so borough and weekday summaries are approximations. Zone and hour numbers are exact.</li>
+      <li>The driver-arrival timestamp has logging artifacts (42% of Lyft trips at exactly 60 seconds), so it is only used as supporting evidence in the brief.</li>
+    </ul>
+  </section>
+</div>
+<footer>Source: NYC TLC Trip Record Data. Analysis in DuckDB; dashboard built from three exported tables in /data.</footer>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+const DATA = {"hours":[{"dow":1,"h":0,"trips":64779,"p50":4.62,"p90":11.82},{"dow":1,"h":1,"trips":37406,"p50":4.33,"p90":10.47},{"dow":1,"h":2,"trips":25343,"p50":4.52,"p90":10.45},{"dow":1,"h":3,"trips":23799,"p50":5.12,"p90":11.78},{"dow":1,"h":4,"trips":32689,"p50":5.4,"p90":12.22},{"dow":1,"h":5,"trips":51896,"p50":4.87,"p90":10.97},{"dow":1,"h":6,"trips":91427,"p50":4.6,"p90":10.88},{"dow":1,"h":7,"trips":134952,"p50":4.98,"p90":11.63},{"dow":1,"h":8,"trips":156676,"p50":4.32,"p90":9.52},{"dow":1,"h":9,"trips":129030,"p50":3.62,"p90":7.95},{"dow":1,"h":10,"trips":108805,"p50":3.47,"p90":7.88},{"dow":1,"h":11,"trips":101012,"p50":3.47,"p90":7.85},{"dow":1,"h":12,"trips":101266,"p50":3.58,"p90":8.07},{"dow":1,"h":13,"trips":107753,"p50":3.68,"p90":8.25},{"dow":1,"h":14,"trips":120341,"p50":3.87,"p90":8.82},{"dow":1,"h":15,"trips":121250,"p50":3.77,"p90":8.5},{"dow":1,"h":16,"trips":125671,"p50":3.77,"p90":8.75},{"dow":1,"h":17,"trips":134875,"p50":3.75,"p90":8.45},{"dow":1,"h":18,"trips":133212,"p50":3.57,"p90":8.27},{"dow":1,"h":19,"trips":123822,"p50":3.47,"p90":8.57},{"dow":1,"h":20,"trips":126956,"p50":3.67,"p90":9.15},{"dow":1,"h":21,"trips":123327,"p50":4.08,"p90":10.13},{"dow":1,"h":22,"trips":108381,"p50":4.22,"p90":10.53},{"dow":1,"h":23,"trips":89581,"p50":4.32,"p90":11.07},{"dow":2,"h":0,"trips":58067,"p50":4.22,"p90":10.95},{"dow":2,"h":1,"trips":33563,"p50":4.03,"p90":9.88},{"dow":2,"h":2,"trips":21683,"p50":4.27,"p90":9.93},{"dow":2,"h":3,"trips":20428,"p50":4.65,"p90":10.83},{"dow":2,"h":4,"trips":28950,"p50":4.8,"p90":10.72},{"dow":2,"h":5,"trips":49233,"p50":4.33,"p90":9.75},{"dow":2,"h":6,"trips":89086,"p50":4.1,"p90":9.42},{"dow":2,"h":7,"trips":137626,"p50":4.62,"p90":10.77},{"dow":2,"h":8,"trips":160663,"p50":4.22,"p90":9.27},{"dow":2,"h":9,"trips":133312,"p50":3.65,"p90":8.0},{"dow":2,"h":10,"trips":109406,"p50":3.43,"p90":7.6},{"dow":2,"h":11,"trips":104311,"p50":3.42,"p90":7.65},{"dow":2,"h":12,"trips":102679,"p50":3.52,"p90":7.83},{"dow":2,"h":13,"trips":110702,"p50":3.63,"p90":8.13},{"dow":2,"h":14,"trips":123361,"p50":3.78,"p90":8.52},{"dow":2,"h":15,"trips":125613,"p50":3.72,"p90":8.4},{"dow":2,"h":16,"trips":130833,"p50":3.65,"p90":8.23},{"dow":2,"h":17,"trips":148103,"p50":3.73,"p90":8.43},{"dow":2,"h":18,"trips":148907,"p50":3.52,"p90":7.87},{"dow":2,"h":19,"trips":137772,"p50":3.35,"p90":7.75},{"dow":2,"h":20,"trips":141974,"p50":3.58,"p90":8.45},{"dow":2,"h":21,"trips":141100,"p50":4.15,"p90":9.77},{"dow":2,"h":22,"trips":128271,"p50":4.32,"p90":10.12},{"dow":2,"h":23,"trips":100377,"p50":4.12,"p90":10.15},{"dow":3,"h":0,"trips":79741,"p50":3.85,"p90":9.55},{"dow":3,"h":1,"trips":47279,"p50":3.88,"p90":9.37},{"dow":3,"h":2,"trips":31368,"p50":4.13,"p90":9.72},{"dow":3,"h":3,"trips":28546,"p50":4.55,"p90":10.4},{"dow":3,"h":4,"trips":38377,"p50":4.78,"p90":10.65},{"dow":3,"h":5,"trips":64562,"p50":4.45,"p90":9.98},{"dow":3,"h":6,"trips":113999,"p50":4.27,"p90":9.68},{"dow":3,"h":7,"trips":177828,"p50":4.72,"p90":10.8},{"dow":3,"h":8,"trips":206779,"p50":4.28,"p90":9.28},{"dow":3,"h":9,"trips":174446,"p50":3.67,"p90":7.92},{"dow":3,"h":10,"trips":143987,"p50":3.4,"p90":7.48},{"dow":3,"h":11,"trips":136391,"p50":3.4,"p90":7.58},{"dow":3,"h":12,"trips":137692,"p50":3.53,"p90":7.85},{"dow":3,"h":13,"trips":144499,"p50":3.65,"p90":8.15},{"dow":3,"h":14,"trips":162928,"p50":3.83,"p90":8.65},{"dow":3,"h":15,"trips":166060,"p50":3.78,"p90":8.52},{"dow":3,"h":16,"trips":173911,"p50":3.73,"p90":8.4},{"dow":3,"h":17,"trips":193527,"p50":3.8,"p90":8.53},{"dow":3,"h":18,"trips":190769,"p50":3.6,"p90":8.12},{"dow":3,"h":19,"trips":178431,"p50":3.4,"p90":7.82},{"dow":3,"h":20,"trips":185467,"p50":3.58,"p90":8.5},{"dow":3,"h":21,"trips":186469,"p50":4.12,"p90":9.88},{"dow":3,"h":22,"trips":175437,"p50":4.4,"p90":10.48},{"dow":3,"h":23,"trips":144340,"p50":4.18,"p90":10.25},{"dow":4,"h":0,"trips":92144,"p50":3.85,"p90":9.28},{"dow":4,"h":1,"trips":53632,"p50":3.85,"p90":9.27},{"dow":4,"h":2,"trips":35383,"p50":4.13,"p90":9.53},{"dow":4,"h":3,"trips":33161,"p50":4.62,"p90":10.8},{"dow":4,"h":4,"trips":43517,"p50":5.05,"p90":11.4},{"dow":4,"h":5,"trips":67457,"p50":4.95,"p90":10.75},{"dow":4,"h":6,"trips":115159,"p50":4.53,"p90":10.15},{"dow":4,"h":7,"trips":172257,"p50":4.72,"p90":10.83},{"dow":4,"h":8,"trips":205860,"p50":4.3,"p90":9.35},{"dow":4,"h":9,"trips":177899,"p50":3.67,"p90":7.95},{"dow":4,"h":10,"trips":150589,"p50":3.43,"p90":7.62},{"dow":4,"h":11,"trips":142531,"p50":3.4,"p90":7.52},{"dow":4,"h":12,"trips":144157,"p50":3.53,"p90":7.83},{"dow":4,"h":13,"trips":151942,"p50":3.65,"p90":8.1},{"dow":4,"h":14,"trips":167718,"p50":3.82,"p90":8.5},{"dow":4,"h":15,"trips":171171,"p50":3.82,"p90":8.45},{"dow":4,"h":16,"trips":180961,"p50":3.78,"p90":8.55},{"dow":4,"h":17,"trips":202648,"p50":3.93,"p90":8.82},{"dow":4,"h":18,"trips":206517,"p50":3.7,"p90":8.18},{"dow":4,"h":19,"trips":194191,"p50":3.48,"p90":7.92},{"dow":4,"h":20,"trips":197212,"p50":3.58,"p90":8.43},{"dow":4,"h":21,"trips":199885,"p50":3.95,"p90":9.68},{"dow":4,"h":22,"trips":191259,"p50":4.42,"p90":10.58},{"dow":4,"h":23,"trips":155875,"p50":4.17,"p90":9.92},{"dow":5,"h":0,"trips":89840,"p50":3.83,"p90":9.38},{"dow":5,"h":1,"trips":57668,"p50":3.68,"p90":8.77},{"dow":5,"h":2,"trips":39077,"p50":3.97,"p90":9.22},{"dow":5,"h":3,"trips":33821,"p50":4.55,"p90":10.38},{"dow":5,"h":4,"trips":38960,"p50":5.13,"p90":11.38},{"dow":5,"h":5,"trips":53158,"p50":5.13,"p90":11.27},{"dow":5,"h":6,"trips":86667,"p50":4.6,"p90":10.47},{"dow":5,"h":7,"trips":124905,"p50":4.58,"p90":10.63},{"dow":5,"h":8,"trips":147206,"p50":4.08,"p90":8.83},{"dow":5,"h":9,"trips":133427,"p50":3.58,"p90":7.72},{"dow":5,"h":10,"trips":121445,"p50":3.48,"p90":7.6},{"dow":5,"h":11,"trips":118561,"p50":3.63,"p90":8.07},{"dow":5,"h":12,"trips":121446,"p50":3.97,"p90":8.82},{"dow":5,"h":13,"trips":129469,"p50":4.25,"p90":9.38},{"dow":5,"h":14,"trips":144203,"p50":4.42,"p90":10.05},{"dow":5,"h":15,"trips":141049,"p50":4.02,"p90":9.05},{"dow":5,"h":16,"trips":152207,"p50":3.88,"p90":8.7},{"dow":5,"h":17,"trips":165204,"p50":3.88,"p90":8.53},{"dow":5,"h":18,"trips":180344,"p50":3.77,"p90":8.42},{"dow":5,"h":19,"trips":180975,"p50":3.68,"p90":8.12},{"dow":5,"h":20,"trips":173403,"p50":3.67,"p90":8.22},{"dow":5,"h":21,"trips":173891,"p50":3.77,"p90":8.83},{"dow":5,"h":22,"trips":186752,"p50":4.2,"p90":9.72},{"dow":5,"h":23,"trips":176331,"p50":4.6,"p90":10.38},{"dow":6,"h":0,"trips":147209,"p50":4.42,"p90":9.88},{"dow":6,"h":1,"trips":117030,"p50":4.2,"p90":9.42},{"dow":6,"h":2,"trips":89418,"p50":4.38,"p90":9.68},{"dow":6,"h":3,"trips":69836,"p50":4.68,"p90":10.63},{"dow":6,"h":4,"trips":54708,"p50":5.05,"p90":11.38},{"dow":6,"h":5,"trips":48549,"p50":4.62,"p90":10.18},{"dow":6,"h":6,"trips":61450,"p50":4.35,"p90":9.85},{"dow":6,"h":7,"trips":76189,"p50":3.9,"p90":8.68},{"dow":6,"h":8,"trips":98384,"p50":3.77,"p90":8.2},{"dow":6,"h":9,"trips":120371,"p50":3.77,"p90":8.05},{"dow":6,"h":10,"trips":132506,"p50":3.72,"p90":7.93},{"dow":6,"h":11,"trips":145225,"p50":3.88,"p90":8.37},{"dow":6,"h":12,"trips":148749,"p50":4.05,"p90":8.78},{"dow":6,"h":13,"trips":153170,"p50":4.18,"p90":9.18},{"dow":6,"h":14,"trips":158967,"p50":4.18,"p90":9.28},{"dow":6,"h":15,"trips":167174,"p50":4.08,"p90":9.03},{"dow":6,"h":16,"trips":174559,"p50":4.07,"p90":9.15},{"dow":6,"h":17,"trips":190475,"p50":4.25,"p90":9.37},{"dow":6,"h":18,"trips":198451,"p50":4.18,"p90":9.13},{"dow":6,"h":19,"trips":204560,"p50":4.43,"p90":9.87},{"dow":6,"h":20,"trips":201421,"p50":4.37,"p90":9.7},{"dow":6,"h":21,"trips":202172,"p50":4.47,"p90":10.05},{"dow":6,"h":22,"trips":208317,"p50":5.07,"p90":11.47},{"dow":6,"h":23,"trips":196110,"p50":5.53,"p90":12.32},{"dow":7,"h":0,"trips":166181,"p50":5.23,"p90":11.53},{"dow":7,"h":1,"trips":131173,"p50":4.72,"p90":10.55},{"dow":7,"h":2,"trips":99738,"p50":4.93,"p90":10.95},{"dow":7,"h":3,"trips":79149,"p50":5.32,"p90":12.03},{"dow":7,"h":4,"trips":58427,"p50":5.65,"p90":12.62},{"dow":7,"h":5,"trips":48193,"p50":5.1,"p90":11.43},{"dow":7,"h":6,"trips":58984,"p50":4.93,"p90":11.32},{"dow":7,"h":7,"trips":72083,"p50":4.23,"p90":9.47},{"dow":7,"h":8,"trips":84948,"p50":3.82,"p90":8.38},{"dow":7,"h":9,"trips":109636,"p50":3.93,"p90":8.67},{"dow":7,"h":10,"trips":130174,"p50":4.05,"p90":8.82},{"dow":7,"h":11,"trips":136688,"p50":4.07,"p90":8.9},{"dow":7,"h":12,"trips":146256,"p50":4.35,"p90":9.63},{"dow":7,"h":13,"trips":148378,"p50":4.58,"p90":10.12},{"dow":7,"h":14,"trips":152297,"p50":4.68,"p90":10.2},{"dow":7,"h":15,"trips":147814,"p50":4.23,"p90":9.27},{"dow":7,"h":16,"trips":141207,"p50":3.98,"p90":8.98},{"dow":7,"h":17,"trips":136577,"p50":3.9,"p90":8.97},{"dow":7,"h":18,"trips":135394,"p50":3.88,"p90":9.3},{"dow":7,"h":19,"trips":134380,"p50":4.1,"p90":10.19},{"dow":7,"h":20,"trips":135174,"p50":4.35,"p90":10.9},{"dow":7,"h":21,"trips":129459,"p50":4.53,"p90":11.67},{"dow":7,"h":22,"trips":116704,"p50":4.75,"p90":11.98},{"dow":7,"h":23,"trips":95034,"p50":4.68,"p90":12.1}],"zones":[{"z":"Howard Beach","b":"Queens","trips":34086,"p50":4.98,"p90":10.9,"over":12.6,"drop":1.59},{"z":"Queensboro Hill","b":"Queens","trips":28052,"p50":3.95,"p90":9.07,"over":7.1,"drop":1.18},{"z":"Norwood","b":"Bronx","trips":95081,"p50":3.95,"p90":8.83,"over":6.9,"drop":1.0},{"z":"Laurelton","b":"Queens","trips":43812,"p50":4.6,"p90":10.15,"over":10.5,"drop":1.32},{"z":"Sutton Place/Turtle Bay North","b":"Manhattan","trips":108384,"p50":3.33,"p90":6.82,"over":2.9,"drop":1.44},{"z":"Downtown Brooklyn/MetroTech","b":"Brooklyn","trips":97636,"p50":4.25,"p90":9.63,"over":8.9,"drop":1.45},{"z":"Hollis","b":"Queens","trips":27665,"p50":4.47,"p90":10.25,"over":10.7,"drop":1.83},{"z":"Riverdale/North Riverdale/Fieldston","b":"Bronx","trips":46545,"p50":4.68,"p90":10.33,"over":10.9,"drop":1.99},{"z":"Central Harlem","b":"Manhattan","trips":137281,"p50":4.28,"p90":9.55,"over":8.8,"drop":1.22},{"z":"Kew Gardens Hills","b":"Queens","trips":37103,"p50":4.23,"p90":9.57,"over":8.6,"drop":1.44},{"z":"Upper West Side North","b":"Manhattan","trips":100894,"p50":3.67,"p90":7.78,"over":4.9,"drop":2.1},{"z":"Murray Hill-Queens","b":"Queens","trips":43417,"p50":3.95,"p90":8.9,"over":7.1,"drop":1.41},{"z":"JFK Airport","b":"Queens","trips":316757,"p50":6.05,"p90":13.85,"over":23.5,"drop":0.54},{"z":"Upper East Side North","b":"Manhattan","trips":145107,"p50":3.55,"p90":7.07,"over":3.1,"drop":1.24},{"z":"Heartland Village/Todt Hill","b":"Staten Island","trips":21681,"p50":5.13,"p90":12.17,"over":16.1,"drop":2.26},{"z":"Erasmus","b":"Brooklyn","trips":68407,"p50":4.35,"p90":9.62,"over":8.9,"drop":1.22},{"z":"Prospect-Lefferts Gardens","b":"Brooklyn","trips":154815,"p50":4.35,"p90":9.63,"over":9.0,"drop":1.36},{"z":"Mott Haven/Port Morris","b":"Bronx","trips":143439,"p50":4.53,"p90":10.42,"over":11.2,"drop":1.13},{"z":"East Village","b":"Manhattan","trips":239279,"p50":3.42,"p90":7.57,"over":4.3,"drop":0.91},{"z":"Flatiron","b":"Manhattan","trips":126917,"p50":3.15,"p90":6.85,"over":3.1,"drop":1.36},{"z":"TriBeCa/Civic Center","b":"Manhattan","trips":225197,"p50":3.33,"p90":6.8,"over":2.8,"drop":0.79},{"z":"Financial District North","b":"Manhattan","trips":119448,"p50":3.58,"p90":7.88,"over":5.0,"drop":1.75},{"z":"West Concourse","b":"Bronx","trips":119766,"p50":4.67,"p90":10.85,"over":12.4,"drop":0.85},{"z":"Elmhurst","b":"Queens","trips":157225,"p50":4.03,"p90":9.05,"over":7.5,"drop":0.88},{"z":"Fort Greene","b":"Brooklyn","trips":141776,"p50":3.97,"p90":8.98,"over":7.4,"drop":1.2},{"z":"East Harlem North","b":"Manhattan","trips":146291,"p50":4.63,"p90":10.22,"over":10.6,"drop":1.29},{"z":"University Heights/Morris Heights","b":"Bronx","trips":93565,"p50":4.87,"p90":11.27,"over":13.8,"drop":1.27},{"z":"Central Harlem North","b":"Manhattan","trips":188260,"p50":4.62,"p90":10.65,"over":11.9,"drop":1.34},{"z":"Manhattan Valley","b":"Manhattan","trips":56503,"p50":3.9,"p90":8.6,"over":6.5,"drop":1.96},{"z":"Woodlawn/Wakefield","b":"Bronx","trips":76857,"p50":5.17,"p90":11.1,"over":13.5,"drop":1.27},{"z":"Old Astoria","b":"Queens","trips":74164,"p50":3.78,"p90":8.08,"over":5.2,"drop":1.15},{"z":"Rosedale","b":"Queens","trips":42323,"p50":5.7,"p90":12.0,"over":16.8,"drop":1.21},{"z":"Jamaica","b":"Queens","trips":171034,"p50":4.25,"p90":9.68,"over":9.1,"drop":1.0},{"z":"Marble Hill","b":"Manhattan","trips":20445,"p50":4.47,"p90":9.9,"over":9.7,"drop":0.9},{"z":"Forest Hills","b":"Queens","trips":146769,"p50":4.13,"p90":9.12,"over":7.7,"drop":1.37},{"z":"Stuyvesant Heights","b":"Brooklyn","trips":159925,"p50":4.45,"p90":10.22,"over":10.6,"drop":1.39},{"z":"Washington Heights South","b":"Manhattan","trips":159297,"p50":4.07,"p90":9.68,"over":9.1,"drop":1.3},{"z":"Mount Hope","b":"Bronx","trips":104263,"p50":4.45,"p90":10.38,"over":11.0,"drop":1.22},{"z":"Coney Island","b":"Brooklyn","trips":61473,"p50":4.25,"p90":9.68,"over":9.2,"drop":1.9},{"z":"Bay Ridge","b":"Brooklyn","trips":115867,"p50":3.62,"p90":7.67,"over":4.1,"drop":1.27},{"z":"Lenox Hill West","b":"Manhattan","trips":127186,"p50":3.55,"p90":7.13,"over":3.0,"drop":1.46},{"z":"Flatbush/Ditmas Park","b":"Brooklyn","trips":165921,"p50":4.05,"p90":8.77,"over":6.7,"drop":1.34},{"z":"Soundview/Castle Hill","b":"Bronx","trips":108501,"p50":4.67,"p90":10.5,"over":11.4,"drop":1.26},{"z":"East New York","b":"Brooklyn","trips":245654,"p50":4.4,"p90":9.92,"over":9.8,"drop":1.25},{"z":"Corona","b":"Queens","trips":66959,"p50":4.33,"p90":9.67,"over":9.1,"drop":1.44},{"z":"Fresh Meadows","b":"Queens","trips":20093,"p50":4.53,"p90":10.23,"over":10.7,"drop":1.8},{"z":"Westchester Village/Unionport","b":"Bronx","trips":55998,"p50":4.07,"p90":9.2,"over":7.8,"drop":1.1},{"z":"Bedford Park","b":"Bronx","trips":105061,"p50":4.35,"p90":10.23,"over":10.6,"drop":1.12},{"z":"Middle Village","b":"Queens","trips":47043,"p50":4.35,"p90":9.52,"over":8.7,"drop":1.38},{"z":"Rego Park","b":"Queens","trips":55508,"p50":4.27,"p90":9.3,"over":8.0,"drop":1.45},{"z":"West Chelsea/Hudson Yards","b":"Manhattan","trips":214160,"p50":3.63,"p90":7.95,"over":4.8,"drop":0.71},{"z":"Glendale","b":"Queens","trips":53196,"p50":4.38,"p90":9.87,"over":9.6,"drop":1.12},{"z":"Cypress Hills","b":"Brooklyn","trips":67239,"p50":4.3,"p90":9.85,"over":9.5,"drop":1.59},{"z":"Astoria","b":"Queens","trips":202689,"p50":3.53,"p90":7.63,"over":4.1,"drop":0.92},{"z":"Woodside","b":"Queens","trips":93890,"p50":3.62,"p90":7.97,"over":4.8,"drop":0.78},{"z":"Bellerose","b":"Queens","trips":19125,"p50":4.88,"p90":10.45,"over":11.5,"drop":2.01},{"z":"Brownsville","b":"Brooklyn","trips":131188,"p50":4.88,"p90":11.17,"over":13.2,"drop":1.55},{"z":"Bushwick North","b":"Brooklyn","trips":165131,"p50":4.12,"p90":9.92,"over":9.8,"drop":0.8},{"z":"Lincoln Square West","b":"Manhattan","trips":96765,"p50":3.6,"p90":7.39,"over":3.8,"drop":1.77},{"z":"Auburndale","b":"Queens","trips":18780,"p50":4.08,"p90":9.03,"over":7.2,"drop":1.77},{"z":"Midtown North","b":"Manhattan","trips":161038,"p50":3.22,"p90":7.08,"over":3.4,"drop":1.73},{"z":"Parkchester","b":"Bronx","trips":57412,"p50":4.17,"p90":9.28,"over":8.1,"drop":1.44},{"z":"Little Italy/NoLiTa","b":"Manhattan","trips":137153,"p50":3.62,"p90":7.83,"over":4.8,"drop":0.75},{"z":"Bloomingdale","b":"Manhattan","trips":28956,"p50":3.87,"p90":8.75,"over":6.8,"drop":1.85},{"z":"Grymes Hill/Clifton","b":"Staten Island","trips":17778,"p50":5.45,"p90":12.08,"over":15.7,"drop":2.09},{"z":"DUMBO/Vinegar Hill","b":"Brooklyn","trips":77976,"p50":3.9,"p90":8.93,"over":7.3,"drop":0.75},{"z":"Westerleigh","b":"Staten Island","trips":17538,"p50":4.62,"p90":10.45,"over":11.3,"drop":1.91},{"z":"Lower East Side","b":"Manhattan","trips":198580,"p50":3.7,"p90":8.67,"over":6.6,"drop":0.86},{"z":"Pelham Bay","b":"Bronx","trips":29634,"p50":4.22,"p90":9.58,"over":8.8,"drop":1.18},{"z":"Flatlands","b":"Brooklyn","trips":102088,"p50":4.45,"p90":9.78,"over":9.4,"drop":1.34},{"z":"Brooklyn Heights","b":"Brooklyn","trips":99838,"p50":3.77,"p90":8.27,"over":5.7,"drop":1.45},{"z":"Williamsbridge/Olinville","b":"Bronx","trips":109773,"p50":4.77,"p90":10.63,"over":11.9,"drop":1.27},{"z":"Prospect Heights","b":"Brooklyn","trips":75776,"p50":3.78,"p90":8.4,"over":6.0,"drop":1.18},{"z":"Midtown East","b":"Manhattan","trips":161627,"p50":3.17,"p90":6.73,"over":2.6,"drop":1.51},{"z":"Kensington","b":"Brooklyn","trips":37571,"p50":3.82,"p90":8.17,"over":4.7,"drop":1.2},{"z":"Sunset Park East","b":"Brooklyn","trips":52133,"p50":4.18,"p90":9.23,"over":7.9,"drop":1.21},{"z":"Pelham Parkway","b":"Bronx","trips":68643,"p50":4.2,"p90":9.33,"over":8.3,"drop":1.09},{"z":"Union Sq","b":"Manhattan","trips":211129,"p50":3.33,"p90":7.37,"over":4.0,"drop":0.71},{"z":"Homecrest","b":"Brooklyn","trips":61033,"p50":3.72,"p90":7.82,"over":4.6,"drop":0.93},{"z":"Pelham Bay Park","b":"Bronx","trips":4985,"p50":4.9,"p90":11.68,"over":14.3,"drop":0.54},{"z":"Morningside Heights","b":"Manhattan","trips":96664,"p50":3.7,"p90":8.22,"over":5.9,"drop":1.33},{"z":"Springfield Gardens South","b":"Queens","trips":38385,"p50":4.97,"p90":10.62,"over":11.7,"drop":1.42},{"z":"Marine Park/Mill Basin","b":"Brooklyn","trips":55933,"p50":4.48,"p90":10.23,"over":10.6,"drop":1.42},{"z":"Long Island City/Queens Plaza","b":"Queens","trips":52505,"p50":3.48,"p90":7.63,"over":4.2,"drop":1.29},{"z":"Stapleton","b":"Staten Island","trips":31309,"p50":4.97,"p90":11.38,"over":13.5,"drop":1.8},{"z":"Port Richmond","b":"Staten Island","trips":16336,"p50":4.82,"p90":10.88,"over":12.3,"drop":1.55},{"z":"Crotona Park","b":"Bronx","trips":2341,"p50":4.62,"p90":10.18,"over":10.6,"drop":1.14},{"z":"Starrett City","b":"Brooklyn","trips":27163,"p50":4.88,"p90":10.77,"over":12.1,"drop":3.32},{"z":"Glen Oaks","b":"Queens","trips":20617,"p50":5.13,"p90":11.42,"over":14.3,"drop":2.34},{"z":"Flushing Meadows-Corona Park","b":"Queens","trips":14176,"p50":5.35,"p90":13.85,"over":19.9,"drop":0.41},{"z":"Rockaway Park","b":"Queens","trips":12404,"p50":5.78,"p90":14.17,"over":22.5,"drop":4.18},{"z":"Bensonhurst East","b":"Brooklyn","trips":57032,"p50":3.82,"p90":8.47,"over":5.8,"drop":1.25},{"z":"Garment District","b":"Manhattan","trips":104639,"p50":3.6,"p90":8.7,"over":6.8,"drop":1.95},{"z":"Mariners Harbor","b":"Staten Island","trips":30697,"p50":4.6,"p90":10.58,"over":11.3,"drop":1.45},{"z":"Gravesend","b":"Brooklyn","trips":31898,"p50":3.9,"p90":8.58,"over":6.3,"drop":1.66},{"z":"North Corona","b":"Queens","trips":56332,"p50":4.73,"p90":10.87,"over":12.4,"drop":0.98},{"z":"Cobble Hill","b":"Brooklyn","trips":33735,"p50":3.43,"p90":7.28,"over":3.8,"drop":1.18},{"z":"Ozone Park","b":"Queens","trips":38464,"p50":4.08,"p90":9.03,"over":7.1,"drop":1.16},{"z":"Kingsbridge Heights","b":"Bronx","trips":55571,"p50":4.27,"p90":10.08,"over":10.2,"drop":1.28},{"z":"West Brighton","b":"Staten Island","trips":17387,"p50":5.03,"p90":11.27,"over":13.5,"drop":1.83},{"z":"Manhattan Beach","b":"Brooklyn","trips":21745,"p50":3.93,"p90":8.88,"over":7.1,"drop":1.24},{"z":"Saint George/New Brighton","b":"Staten Island","trips":46839,"p50":4.65,"p90":11.22,"over":13.3,"drop":1.26},{"z":"South Williamsburg","b":"Brooklyn","trips":30435,"p50":4.77,"p90":9.97,"over":9.9,"drop":1.02},{"z":"Saint Michaels Cemetery/Woodside","b":"Queens","trips":3696,"p50":3.53,"p90":6.95,"over":3.1,"drop":0.14},{"z":"Brighton Beach","b":"Brooklyn","trips":44870,"p50":3.83,"p90":8.38,"over":5.8,"drop":1.46},{"z":"Bloomfield/Emerson Hill","b":"Staten Island","trips":32774,"p50":5.12,"p90":12.17,"over":16.3,"drop":1.84},{"z":"Prospect Park","b":"Brooklyn","trips":14000,"p50":4.13,"p90":9.13,"over":7.8,"drop":0.72},{"z":"Bronx Park","b":"Bronx","trips":10700,"p50":4.83,"p90":10.98,"over":12.8,"drop":0.63},{"z":"Charleston/Tottenville","b":"Staten Island","trips":9570,"p50":5.8,"p90":13.68,"over":21.1,"drop":2.49},{"z":"New Dorp/Midland Beach","b":"Staten Island","trips":14223,"p50":5.15,"p90":12.35,"over":16.7,"drop":2.04},{"z":"Oakwood","b":"Staten Island","trips":7317,"p50":5.32,"p90":12.52,"over":16.8,"drop":3.03},{"z":"Randalls Island","b":"Manhattan","trips":4668,"p50":5.93,"p90":13.06,"over":20.8,"drop":1.95},{"z":"Inwood Hill Park","b":"Manhattan","trips":6379,"p50":3.92,"p90":8.33,"over":5.9,"drop":0.99},{"z":"Arden Heights","b":"Staten Island","trips":6024,"p50":5.76,"p90":13.32,"over":20.6,"drop":3.74},{"z":"Battery Park","b":"Manhattan","trips":2212,"p50":3.93,"p90":8.63,"over":6.5,"drop":0.54},{"z":"Marine Park/Floyd Bennett Field","b":"Brooklyn","trips":1660,"p50":5.06,"p90":11.37,"over":14.0,"drop":1.01},{"z":"Brooklyn Navy Yard","b":"Brooklyn","trips":17388,"p50":4.77,"p90":11.98,"over":14.8,"drop":0.58},{"z":"City Island","b":"Bronx","trips":4782,"p50":8.42,"p90":18.35,"over":39.8,"drop":2.07},{"z":"Van Cortlandt Village","b":"Bronx","trips":81189,"p50":4.37,"p90":9.78,"over":9.4,"drop":1.17},{"z":"Spuyten Duyvil/Kingsbridge","b":"Bronx","trips":80456,"p50":4.22,"p90":9.23,"over":8.0,"drop":1.13},{"z":"East Flatbush/Remsen Village","b":"Brooklyn","trips":106190,"p50":4.88,"p90":10.97,"over":12.6,"drop":1.36},{"z":"Clinton Hill","b":"Brooklyn","trips":124756,"p50":3.87,"p90":8.5,"over":6.2,"drop":1.24},{"z":"Hillcrest/Pomonok","b":"Queens","trips":49832,"p50":4.3,"p90":9.78,"over":9.4,"drop":1.54},{"z":"Midwood","b":"Brooklyn","trips":60172,"p50":3.82,"p90":8.05,"over":5.1,"drop":1.37},{"z":"Gramercy","b":"Manhattan","trips":141921,"p50":3.33,"p90":7.03,"over":3.2,"drop":1.35},{"z":"Upper East Side South","b":"Manhattan","trips":173601,"p50":3.25,"p90":6.57,"over":2.3,"drop":0.95},{"z":"East Harlem South","b":"Manhattan","trips":130628,"p50":4.32,"p90":9.67,"over":9.1,"drop":1.59},{"z":"East Flatbush/Farragut","b":"Brooklyn","trips":89046,"p50":4.47,"p90":9.92,"over":9.8,"drop":1.3},{"z":"Seaport","b":"Manhattan","trips":41964,"p50":3.88,"p90":8.27,"over":5.8,"drop":1.46},{"z":"Yorkville West","b":"Manhattan","trips":105494,"p50":3.78,"p90":7.75,"over":4.3,"drop":1.8},{"z":"LaGuardia Airport","b":"Queens","trips":410541,"p50":6.02,"p90":14.13,"over":24.8,"drop":0.59},{"z":"Meatpacking/West Village West","b":"Manhattan","trips":114689,"p50":3.3,"p90":6.98,"over":3.3,"drop":0.71},{"z":"Penn Station/Madison Sq West","b":"Manhattan","trips":112572,"p50":3.22,"p90":8.07,"over":5.6,"drop":1.46},{"z":"Crown Heights South","b":"Brooklyn","trips":71232,"p50":4.45,"p90":10.05,"over":10.1,"drop":1.38},{"z":"Melrose South","b":"Bronx","trips":102202,"p50":4.27,"p90":10.1,"over":10.2,"drop":1.06},{"z":"Inwood","b":"Manhattan","trips":85160,"p50":3.97,"p90":9.28,"over":8.0,"drop":1.0},{"z":"Queensbridge/Ravenswood","b":"Queens","trips":35446,"p50":3.98,"p90":8.93,"over":7.2,"drop":1.91},{"z":"Long Island City/Hunters Point","b":"Queens","trips":188021,"p50":3.65,"p90":8.08,"over":5.4,"drop":0.82},{"z":"Crown Heights North","b":"Brooklyn","trips":267140,"p50":4.37,"p90":10.1,"over":10.3,"drop":1.38},{"z":"East Chelsea","b":"Manhattan","trips":205009,"p50":3.3,"p90":7.6,"over":4.4,"drop":1.64},{"z":"Park Slope","b":"Brooklyn","trips":195642,"p50":3.37,"p90":7.23,"over":3.7,"drop":1.13},{"z":"Financial District South","b":"Manhattan","trips":55639,"p50":3.7,"p90":8.2,"over":5.6,"drop":1.32},{"z":"Lenox Hill East","b":"Manhattan","trips":114004,"p50":3.8,"p90":8.43,"over":5.9,"drop":1.66},{"z":"Bushwick South","b":"Brooklyn","trips":224922,"p50":4.18,"p90":9.68,"over":9.1,"drop":1.1},{"z":"East Williamsburg","b":"Brooklyn","trips":153002,"p50":3.88,"p90":8.85,"over":7.1,"drop":0.94},{"z":"South Ozone Park","b":"Queens","trips":133972,"p50":3.85,"p90":8.72,"over":6.7,"drop":1.29},{"z":"Woodhaven","b":"Queens","trips":67972,"p50":4.37,"p90":9.77,"over":9.3,"drop":1.6},{"z":"Clinton West","b":"Manhattan","trips":100311,"p50":3.7,"p90":7.93,"over":4.8,"drop":1.36},{"z":"Bay Terrace/Fort Totten","b":"Queens","trips":15633,"p50":5.23,"p90":11.87,"over":15.2,"drop":2.74},{"z":"Flushing","b":"Queens","trips":112793,"p50":4.53,"p90":10.48,"over":11.3,"drop":1.45},{"z":"Boerum Hill","b":"Brooklyn","trips":117672,"p50":4.0,"p90":8.87,"over":6.9,"drop":1.34},{"z":"Lincoln Square East","b":"Manhattan","trips":133034,"p50":3.53,"p90":7.42,"over":3.9,"drop":1.57},{"z":"Upper West Side South","b":"Manhattan","trips":120398,"p50":3.52,"p90":7.23,"over":3.7,"drop":1.91},{"z":"UN/Turtle Bay South","b":"Manhattan","trips":101643,"p50":3.55,"p90":7.42,"over":3.7,"drop":1.76},{"z":"Jackson Heights","b":"Queens","trips":164295,"p50":4.08,"p90":9.1,"over":7.6,"drop":1.1},{"z":"East Elmhurst","b":"Queens","trips":49130,"p50":3.98,"p90":9.37,"over":8.2,"drop":1.48},{"z":"Briarwood/Jamaica Hills","b":"Queens","trips":53284,"p50":4.22,"p90":9.3,"over":7.9,"drop":1.34},{"z":"Kew Gardens","b":"Queens","trips":49649,"p50":3.9,"p90":8.57,"over":6.4,"drop":1.4},{"z":"Maspeth","b":"Queens","trips":67115,"p50":4.38,"p90":9.9,"over":9.7,"drop":0.89},{"z":"Midtown Center","b":"Manhattan","trips":239720,"p50":3.38,"p90":7.83,"over":5.1,"drop":1.23},{"z":"Kips Bay","b":"Manhattan","trips":103388,"p50":3.68,"p90":8.03,"over":5.3,"drop":1.4},{"z":"Washington Heights North","b":"Manhattan","trips":113242,"p50":4.22,"p90":9.88,"over":9.7,"drop":1.53},{"z":"Bedford","b":"Brooklyn","trips":160147,"p50":4.28,"p90":9.6,"over":8.9,"drop":1.24},{"z":"Claremont/Bathgate","b":"Bronx","trips":73719,"p50":4.45,"p90":10.1,"over":10.2,"drop":1.08},{"z":"East Concourse/Concourse Village","b":"Bronx","trips":111899,"p50":4.53,"p90":10.7,"over":12.0,"drop":1.28},{"z":"Carroll Gardens","b":"Brooklyn","trips":50595,"p50":3.6,"p90":7.52,"over":4.3,"drop":1.14},{"z":"Yorkville East","b":"Manhattan","trips":69324,"p50":4.05,"p90":8.4,"over":5.6,"drop":2.45},{"z":"Dyker Heights","b":"Brooklyn","trips":39293,"p50":3.83,"p90":8.4,"over":5.6,"drop":1.16},{"z":"Midtown South","b":"Manhattan","trips":191460,"p50":3.48,"p90":8.03,"over":5.3,"drop":1.71},{"z":"Williamsburg (North Side)","b":"Brooklyn","trips":202361,"p50":3.65,"p90":8.67,"over":6.8,"drop":0.76},{"z":"SoHo","b":"Manhattan","trips":111864,"p50":3.25,"p90":6.93,"over":3.1,"drop":0.57},{"z":"Hunts Point","b":"Bronx","trips":67860,"p50":4.7,"p90":10.95,"over":12.7,"drop":1.02},{"z":"Times Sq/Theatre District","b":"Manhattan","trips":229330,"p50":3.6,"p90":8.97,"over":7.6,"drop":2.83},{"z":"Central Park","b":"Manhattan","trips":30348,"p50":3.65,"p90":7.9,"over":4.6,"drop":0.78},{"z":"Murray Hill","b":"Manhattan","trips":173946,"p50":3.43,"p90":7.48,"over":4.1,"drop":1.53},{"z":"Clinton East","b":"Manhattan","trips":176167,"p50":3.45,"p90":7.92,"over":5.0,"drop":2.03},{"z":"Canarsie","b":"Brooklyn","trips":158119,"p50":4.6,"p90":10.32,"over":10.9,"drop":1.36},{"z":"East Tremont","b":"Bronx","trips":98917,"p50":4.42,"p90":10.37,"over":11.1,"drop":1.43},{"z":"Steinway","b":"Queens","trips":103079,"p50":3.43,"p90":7.47,"over":3.9,"drop":0.96},{"z":"Longwood","b":"Bronx","trips":45049,"p50":4.28,"p90":10.22,"over":10.7,"drop":1.32},{"z":"Bronxdale","b":"Bronx","trips":53965,"p50":4.22,"p90":9.45,"over":8.5,"drop":1.24},{"z":"Allerton/Pelham Gardens","b":"Bronx","trips":49995,"p50":4.1,"p90":9.0,"over":7.4,"drop":1.02},{"z":"Queens Village","b":"Queens","trips":64170,"p50":4.45,"p90":10.08,"over":10.2,"drop":1.65},{"z":"Baisley Park","b":"Queens","trips":69515,"p50":4.18,"p90":9.28,"over":8.0,"drop":1.7},{"z":"Schuylerville/Edgewater Park","b":"Bronx","trips":72714,"p50":4.53,"p90":10.38,"over":11.1,"drop":1.26},{"z":"Saint Albans","b":"Queens","trips":89790,"p50":4.78,"p90":10.77,"over":12.1,"drop":1.46},{"z":"Soundview/Bruckner","b":"Bronx","trips":60668,"p50":4.37,"p90":9.67,"over":9.0,"drop":1.31},{"z":"Hammels/Arverne","b":"Queens","trips":36549,"p50":6.38,"p90":15.02,"over":25.9,"drop":3.25},{"z":"Sunset Park West","b":"Brooklyn","trips":105339,"p50":4.18,"p90":8.88,"over":6.9,"drop":0.81},{"z":"Hudson Sq","b":"Manhattan","trips":72336,"p50":3.28,"p90":6.85,"over":3.1,"drop":1.29},{"z":"Stuy Town/Peter Cooper Village","b":"Manhattan","trips":37799,"p50":4.43,"p90":9.33,"over":8.2,"drop":2.11},{"z":"Greenwich Village North","b":"Manhattan","trips":119464,"p50":3.3,"p90":7.05,"over":3.5,"drop":1.0},{"z":"Greenwich Village South","b":"Manhattan","trips":121251,"p50":3.42,"p90":7.83,"over":5.0,"drop":0.58},{"z":"Ocean Hill","b":"Brooklyn","trips":90084,"p50":4.72,"p90":10.65,"over":11.8,"drop":1.27},{"z":"Ridgewood","b":"Queens","trips":134255,"p50":4.17,"p90":9.4,"over":8.4,"drop":0.95},{"z":"Sunnyside","b":"Queens","trips":128818,"p50":3.93,"p90":8.53,"over":6.1,"drop":0.91},{"z":"Crotona Park East","b":"Bronx","trips":50123,"p50":4.73,"p90":10.73,"over":12.0,"drop":1.37},{"z":"Borough Park","b":"Brooklyn","trips":91263,"p50":4.38,"p90":9.27,"over":8.1,"drop":0.73},{"z":"Highbridge","b":"Bronx","trips":73802,"p50":4.52,"p90":10.6,"over":11.8,"drop":1.31},{"z":"West Farms/Bronx River","b":"Bronx","trips":53945,"p50":4.42,"p90":10.02,"over":10.0,"drop":1.23},{"z":"East New York/Pennsylvania Avenue","b":"Brooklyn","trips":61512,"p50":4.55,"p90":10.33,"over":10.9,"drop":1.52},{"z":"South Jamaica","b":"Queens","trips":67163,"p50":4.55,"p90":10.23,"over":10.6,"drop":1.8},{"z":"Bayside","b":"Queens","trips":43017,"p50":4.22,"p90":9.73,"over":9.2,"drop":1.68},{"z":"Chinatown","b":"Manhattan","trips":50419,"p50":4.05,"p90":8.97,"over":7.3,"drop":1.01},{"z":"Williamsburg (South Side)","b":"Brooklyn","trips":169040,"p50":3.82,"p90":8.63,"over":6.5,"drop":1.04},{"z":"Greenpoint","b":"Brooklyn","trips":205381,"p50":3.68,"p90":8.13,"over":5.4,"drop":0.92},{"z":"Elmhurst/Maspeth","b":"Queens","trips":51896,"p50":4.03,"p90":8.82,"over":6.8,"drop":0.87},{"z":"Richmond Hill","b":"Queens","trips":95345,"p50":4.12,"p90":9.1,"over":7.5,"drop":1.36},{"z":"Eastchester","b":"Bronx","trips":63772,"p50":4.82,"p90":10.63,"over":11.8,"drop":1.19},{"z":"Great Kills","b":"Staten Island","trips":15248,"p50":5.45,"p90":12.55,"over":17.5,"drop":2.72},{"z":"Country Club","b":"Bronx","trips":7520,"p50":5.28,"p90":11.8,"over":15.6,"drop":2.35},{"z":"Hamilton Heights","b":"Manhattan","trips":93239,"p50":4.37,"p90":10.18,"over":10.5,"drop":1.37},{"z":"Van Nest/Morris Park","b":"Bronx","trips":85419,"p50":4.07,"p90":9.12,"over":7.7,"drop":1.18},{"z":"Manhattanville","b":"Manhattan","trips":48188,"p50":4.28,"p90":9.9,"over":9.8,"drop":1.31},{"z":"Gowanus","b":"Brooklyn","trips":49748,"p50":3.84,"p90":7.95,"over":4.8,"drop":0.96},{"z":"College Point","b":"Queens","trips":32987,"p50":5.02,"p90":11.72,"over":15.1,"drop":1.36},{"z":"Whitestone","b":"Queens","trips":27876,"p50":4.85,"p90":10.93,"over":12.6,"drop":1.9},{"z":"Madison","b":"Brooklyn","trips":52066,"p50":3.63,"p90":7.73,"over":4.4,"drop":1.15},{"z":"Sheepshead Bay","b":"Brooklyn","trips":70767,"p50":3.8,"p90":8.42,"over":5.9,"drop":1.32},{"z":"Windsor Terrace","b":"Brooklyn","trips":32173,"p50":3.67,"p90":7.62,"over":4.1,"drop":1.54},{"z":"Springfield Gardens North","b":"Queens","trips":46077,"p50":4.68,"p90":10.05,"over":10.1,"drop":1.78},{"z":"Cambria Heights","b":"Queens","trips":25481,"p50":4.58,"p90":10.28,"over":10.8,"drop":1.76},{"z":"Belmont","b":"Bronx","trips":66916,"p50":4.3,"p90":10.15,"over":10.3,"drop":1.27},{"z":"West Village","b":"Manhattan","trips":177845,"p50":3.38,"p90":7.4,"over":4.0,"drop":0.64},{"z":"World Trade Center","b":"Manhattan","trips":70767,"p50":3.83,"p90":8.35,"over":5.8,"drop":1.66},{"z":"Alphabet City","b":"Manhattan","trips":53777,"p50":4.2,"p90":9.52,"over":8.7,"drop":1.9},{"z":"Douglaston","b":"Queens","trips":14242,"p50":5.82,"p90":12.58,"over":18.7,"drop":3.05},{"z":"Bath Beach","b":"Brooklyn","trips":24730,"p50":3.78,"p90":8.4,"over":5.5,"drop":1.45},{"z":"Bensonhurst West","b":"Brooklyn","trips":74647,"p50":3.88,"p90":8.53,"over":5.9,"drop":1.37},{"z":"Two Bridges/Seward Park","b":"Manhattan","trips":83719,"p50":4.6,"p90":10.15,"over":10.4,"drop":1.75},{"z":"Morrisania/Melrose","b":"Bronx","trips":81443,"p50":4.43,"p90":10.08,"over":10.2,"drop":1.29},{"z":"Battery Park City","b":"Manhattan","trips":86931,"p50":3.67,"p90":7.52,"over":3.8,"drop":1.22},{"z":"Van Cortlandt Park","b":"Bronx","trips":15728,"p50":4.93,"p90":10.65,"over":12.0,"drop":0.81},{"z":"Jamaica Estates","b":"Queens","trips":34021,"p50":4.23,"p90":9.33,"over":8.0,"drop":1.8},{"z":"Red Hook","b":"Brooklyn","trips":43905,"p50":4.67,"p90":10.85,"over":12.3,"drop":1.31},{"z":"East Flushing","b":"Queens","trips":21799,"p50":4.12,"p90":9.4,"over":8.3,"drop":1.38},{"z":"Arrochar/Fort Wadsworth","b":"Staten Island","trips":12495,"p50":4.75,"p90":11.12,"over":12.7,"drop":2.07},{"z":"Oakland Gardens","b":"Queens","trips":16538,"p50":4.65,"p90":10.62,"over":12.0,"drop":2.62},{"z":"Co-Op City","b":"Bronx","trips":86813,"p50":4.93,"p90":10.78,"over":12.3,"drop":1.46},{"z":"Ocean Parkway South","b":"Brooklyn","trips":19097,"p50":3.88,"p90":8.27,"over":5.1,"drop":1.05},{"z":"Far Rockaway","b":"Queens","trips":47576,"p50":5.98,"p90":13.67,"over":22.0,"drop":2.9},{"z":"Fordham South","b":"Bronx","trips":47919,"p50":4.4,"p90":10.33,"over":10.9,"drop":1.03},{"z":"Eltingville/Annadale/Prince's Bay","b":"Staten Island","trips":9851,"p50":5.42,"p90":12.15,"over":15.6,"drop":3.06},{"z":"Rossville/Woodrow","b":"Staten Island","trips":5743,"p50":5.12,"p90":12.2,"over":16.5,"drop":3.69},{"z":"Roosevelt Island","b":"Manhattan","trips":12658,"p50":5.77,"p90":12.28,"over":17.5,"drop":3.17},{"z":"South Beach/Dongan Hills","b":"Staten Island","trips":18743,"p50":4.52,"p90":10.98,"over":12.5,"drop":2.32},{"z":"Columbia Street","b":"Brooklyn","trips":12352,"p50":3.77,"p90":7.97,"over":5.2,"drop":1.44},{"z":"Highbridge Park","b":"Manhattan","trips":2019,"p50":4.37,"p90":10.34,"over":11.1,"drop":1.42},{"z":"Corona","b":"Queens","trips":5520,"p50":4.6,"p90":10.33,"over":10.9,"drop":0.74},{"z":"Forest Park/Highland Park","b":"Queens","trips":3351,"p50":4.63,"p90":10.22,"over":10.6,"drop":0.8},{"z":"Broad Channel","b":"Queens","trips":1202,"p50":7.88,"p90":17.03,"over":35.5,"drop":1.8}],"wav":[{"b":"Staten Island","seg":"No WAV request","trips":244758,"p50":5.13,"p90":12.58,"over":17.3},{"b":"Brooklyn","seg":"No WAV request","trips":3988334,"p50":4.22,"p90":9.97,"over":9.9},{"b":"Bronx","seg":"WAV requested","trips":6153,"p50":8.0,"p90":13.57,"over":28.9},{"b":"Queens","seg":"WAV requested","trips":6146,"p50":7.38,"p90":12.99,"over":25.1},{"b":"Manhattan","seg":"WAV requested","trips":16509,"p50":6.93,"p90":12.05,"over":19.9},{"b":"Bronx","seg":"No WAV request","trips":2044991,"p50":4.6,"p90":11.05,"over":13.2},{"b":"Queens","seg":"No WAV request","trips":3301568,"p50":4.58,"p90":11.12,"over":13.3},{"b":"Manhattan","seg":"No WAV request","trips":5584382,"p50":3.6,"p90":8.35,"over":6.1},{"b":"Brooklyn","seg":"WAV requested","trips":11759,"p50":7.28,"p90":12.55,"over":22.9},{"b":"Staten Island","seg":"WAV requested","trips":476,"p50":7.41,"p90":13.2,"over":24.8}]};
+const DAYS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const tip=document.getElementById('tip');
+function showTip(e,html){tip.innerHTML=html;tip.style.opacity=1;moveTip(e)}
+function moveTip(e){const x=(e.clientX||0)+14,y=(e.clientY||0)+14;tip.style.left=Math.min(x,window.innerWidth-270)+'px';tip.style.top=y+'px'}
+function hideTip(){tip.style.opacity=0}
+const fmt=n=>n.toLocaleString('en-US');
+function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim()}
+function hex(c){c=c.replace('#','');return [0,2,4].map(i=>parseInt(c.substr(i,2),16))}
+function mix(a,b,t){return a.map((v,i)=>Math.round(v+(b[i]-v)*t))}
+function ramp(t){
+  const lo=hex(css('--cool')),mid=hex(css('--mid')),hi=hex(css('--hot'));
+  const c=t<.5?mix(lo,mid,t/.5):mix(mid,hi,(t-.5)/.5);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/* ---------- heatmap ---------- */
+let metric='p90';
+function drawHeat(){
+  const vals=DATA.hours.map(r=>r[metric]);
+  const mn=Math.min(...vals),mx=Math.max(...vals);
+  const g=document.getElementById('hm');g.innerHTML='';
+  g.appendChild(document.createElement('div'));
+  for(let h=0;h<24;h++){const d=document.createElement('div');d.className='hlab';d.textContent=(h%3===0)?h:'';g.appendChild(d)}
+  for(let d=1;d<=7;d++){
+    const l=document.createElement('div');l.className='lab';l.textContent=DAYS[d-1];g.appendChild(l);
+    for(let h=0;h<24;h++){
+      const r=DATA.hours.find(x=>x.dow===d&&x.h===h);
+      const c=document.createElement('div');c.className='cell';c.tabIndex=0;
+      c.style.background=ramp((r[metric]-mn)/(mx-mn));
+      const label=`${DAYS[d-1]} ${String(h).padStart(2,'0')}:00. Median ${r.p50} min, 90th percentile ${r.p90} min, ${fmt(r.trips)} trips.`;
+      c.setAttribute('aria-label',label);
+      const html=`<b>${DAYS[d-1]} ${String(h).padStart(2,'0')}:00</b><br>Median ${r.p50} min<br>90th percentile ${r.p90} min<br>${fmt(r.trips)} trips`;
+      c.addEventListener('mouseenter',e=>showTip(e,html));
+      c.addEventListener('mousemove',moveTip);
+      c.addEventListener('mouseleave',hideTip);
+      c.addEventListener('focus',()=>{const b=c.getBoundingClientRect();showTip({clientX:b.left,clientY:b.bottom},html)});
+      c.addEventListener('blur',hideTip);
+      g.appendChild(c);
+    }
+  }
+  document.getElementById('lmin').textContent=mn.toFixed(1);
+  document.getElementById('lmax').textContent=mx.toFixed(1);
+  document.getElementById('ramp').style.background=`linear-gradient(90deg,${ramp(0)},${ramp(.5)},${ramp(1)})`;
+}
+function setMetric(m){
+  metric=m;
+  document.getElementById('m90').setAttribute('aria-pressed',m==='p90');
+  document.getElementById('m50').setAttribute('aria-pressed',m==='p50');
+  drawHeat();
+}
+document.getElementById('m90').onclick=()=>setMetric('p90');
+document.getElementById('m50').onclick=()=>setMetric('p50');
+
+/* callouts computed from the data */
+(function(){
+  const byHour={};
+  DATA.hours.forEach(r=>{(byHour[r.h]=byHour[r.h]||{w:0,n:0});byHour[r.h].w+=r.p90*r.trips;byHour[r.h].n+=r.trips});
+  const hh=Object.entries(byHour).map(([h,v])=>[+h,v.w/v.n]).sort((a,b)=>b[1]-a[1]);
+  const worstH=hh.slice(0,3).map(x=>x[0]).sort((a,b)=>a-b);
+  const best=hh[hh.length-1];
+  const agg=t=>{const rs=DATA.hours.filter(r=>t==='we'?r.dow>=6:r.dow<6);return rs.reduce((a,r)=>a+r.p90*r.trips,0)/rs.reduce((a,r)=>a+r.trips,0)};
+  const slow=DATA.hours.filter(r=>r.trips>=20000).sort((a,b)=>b.p90-a.p90)[0];
+  const el=document.getElementById('callouts');
+  el.innerHTML=`
+   <div class="callout"><b>Early morning and late night</b>The slowest hours are around ${worstH.map(h=>String(h).padStart(2,'0')+':00').join(', ')}. The fastest hour is ${String(best[0]).padStart(2,'0')}:00 (about ${best[1].toFixed(1)} min at the 90th percentile).</div>
+   <div class="callout"><b>Weekends are slower</b>Roughly ${agg('we').toFixed(1)} min at the 90th percentile against ${agg('wd').toFixed(1)} min on weekdays (volume-weighted approximation).</div>
+   <div class="callout"><b>Slowest busy slot</b>${DAYS[slow.dow-1]} at ${String(slow.h).padStart(2,'0')}:00: ${slow.p90} min at the 90th percentile across ${fmt(slow.trips)} trips.</div>`;
+})();
+
+/* ---------- zones ---------- */
+let zmode='p90';
+function drawZones(){
+  const zs=DATA.zones.map(z=>({...z,long:Math.round(z.trips*z.over/100)}));
+  const key=zmode==='p90'?'p90':'long';
+  const rows=zs.sort((a,b)=>b[key]-a[key]).slice(0,12);
+  const mx=Math.max(...rows.map(r=>r[key]));
+  const totalLong=zs.reduce((a,z)=>a+z.long,0);
+  document.getElementById('zsub').textContent=zmode==='p90'
+    ?'The twelve zones with the longest 90th-percentile wait. These are small, remote zones, so few riders are affected.'
+    :'The twelve zones that produce the most waits over 10 minutes. Volume matters here: the two airports alone account for about one in ten.';
+  const wrap=document.getElementById('zlist');wrap.innerHTML='';
+  rows.forEach(r=>{
+    const d=document.createElement('div');d.className='zrow';
+    const flagged=r.drop>3;
+    const val=zmode==='p90'?r.p90.toFixed(1)+' min':fmt(r.long);
+    const share=(r.long/totalLong*100).toFixed(1);
+    d.innerHTML=`<div class="zname" title="${r.z}, ${r.b}">${r.z} <small>${r.b}</small></div>
+      <div class="track"><div class="fill ${flagged?'flagged':''}" style="width:${r[key]/mx*100}%"></div></div>
+      <div class="zval">${val}</div>`;
+    const html=`<b>${r.z}</b> (${r.b})<br>${fmt(r.trips)} trips<br>Median ${r.p50} min, 90th percentile ${r.p90} min<br>${r.over}% waited over 10 min (${fmt(r.long)} trips, ${share}% of all long waits)<br>${r.drop}% of trips excluded${flagged?' (wait may be understated)':''}`;
+    d.addEventListener('mouseenter',e=>showTip(e,html));
+    d.addEventListener('mousemove',moveTip);
+    d.addEventListener('mouseleave',hideTip);
+    wrap.appendChild(d);
+  });
+}
+function setZ(m){zmode=m;
+  document.getElementById('zp90').setAttribute('aria-pressed',m==='p90');
+  document.getElementById('zlong').setAttribute('aria-pressed',m==='long');
+  drawZones()}
+document.getElementById('zp90').onclick=()=>setZ('p90');
+document.getElementById('zlong').onclick=()=>setZ('long');
+
+/* ---------- accessibility panel ---------- */
+(function(){
+  const order=['Bronx','Queens','Brooklyn','Staten Island','Manhattan'];
+  const rows=DATA.wav;
+  const tot=seg=>rows.filter(r=>r.seg===seg);
+  const agg=(seg,k)=>{const t=tot(seg);return t.reduce((a,r)=>a+r[k]*r.trips,0)/t.reduce((a,r)=>a+r.trips,0)};
+  const n=tot('WAV requested').reduce((a,r)=>a+r.trips,0);
+  document.getElementById('wavbig').innerHTML=
+   `<div><b>${agg('WAV requested','over').toFixed(1)}%</b>of accessible requests waited over 10 min</div>
+    <div><b>${agg('No WAV request','over').toFixed(1)}%</b>of other Uber trips</div>
+    <div><b>${fmt(n)}</b>accessible requests in the five boroughs</div>`;
+  const wrap=document.getElementById('wavlist');
+  const mxv=Math.max(...rows.map(r=>r.over));
+  order.forEach(b=>{
+    const w=rows.find(r=>r.b===b&&r.seg==='WAV requested'),s=rows.find(r=>r.b===b&&r.seg==='No WAV request');
+    const d=document.createElement('div');d.className='brow';
+    d.innerHTML=`<div class="bn"><span>${b}</span><small>median ${w.p50.toFixed(1)} vs ${s.p50.toFixed(1)} min, ${fmt(w.trips)} requests</small></div>
+     <div class="pair"><div class="t"><div class="f" style="width:${w.over/mxv*100}%;background:var(--wav)"></div></div><div class="v">${w.over}%</div></div>
+     <div class="pair"><div class="t"><div class="f" style="width:${s.over/mxv*100}%;background:var(--std)"></div></div><div class="v">${s.over}%</div></div>`;
+    wrap.appendChild(d);
+  });
+})();
+
+drawHeat();drawZones();
+</script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+Borough,segment,trips,p50_min,p90_min,pct_over_10min
+Staten Island,No WAV request,244758,5.13,12.58,17.3
+Brooklyn,No WAV request,3988334,4.22,9.97,9.9
+Bronx,WAV requested,6153,8.0,13.57,28.9
+Queens,WAV requested,6146,7.38,12.99,25.1
+Manhattan,WAV requested,16509,6.93,12.05,19.9
+Bronx,No WAV request,2044991,4.6,11.05,13.2
+Queens,No WAV request,3301568,4.58,11.12,13.3
+Manhattan,No WAV request,5584382,3.6,8.35,6.1
+Brooklyn,WAV requested,11759,7.28,12.55,22.9
+Staten Island,WAV requested,476,7.41,13.2,24.8
